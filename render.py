@@ -71,9 +71,9 @@ def generate_srt_whisper(audio_path):
 
     print(f"  ✓ Detected {len(words)} words")
 
-    # Group words into subtitle chunks (5-7 words per line)
+    # Group words into subtitle chunks (1-2 words per line for Shorts style)
     srt_entries = []
-    chunk_size = 6
+    chunk_size = 1  # 1 word at a time for dramatic effect
     idx = 1
 
     for i in range(0, len(words), chunk_size):
@@ -138,13 +138,15 @@ def format_timestamp(seconds):
 
 def render_video(video_path, audio_path, srt_path, output_path):
     """Merge video + audio and burn subtitles with FFmpeg."""
-    # Subtitle style: white text, black outline, bottom center, modern look
+    # Subtitle style: TikTok/Shorts style - large white text, thick black outline, middle center
     style = (
-        "FontName=Arial,FontSize=22,PrimaryColour=&H00FFFFFF,"
-        "OutlineColour=&H00000000,BackColour=&H80000000,"
-        "Outline=2,Shadow=1,Alignment=2,MarginV=35,"
-        "Bold=1"
+        "FontName=Arial,FontSize=100,PrimaryColour=&H00FFFFFF,"
+        "OutlineColour=&H00000000,BackColour=&H00000000,"
+        "Outline=5,Shadow=0,Alignment=5,Bold=1"
     )
+
+    # Scale to 1080x1920 (Vertical 1080p), 30 fps, crop excess edges
+    vf_scale = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30"
 
     # Escape the subtitle path for FFmpeg filter (replace \ and : )
     srt_escaped = srt_path.replace('\\', '/').replace(':', r'\:')
@@ -153,7 +155,7 @@ def render_video(video_path, audio_path, srt_path, output_path):
         'ffmpeg', '-y',
         '-i', video_path,
         '-i', audio_path,
-        '-vf', f"subtitles={srt_escaped}:force_style='{style}'",
+        '-vf', f"{vf_scale},subtitles={srt_escaped}:force_style='{style}'",
         '-c:v', 'libx264',
         '-preset', 'fast',
         '-crf', '23',
@@ -296,11 +298,13 @@ def main():
                 'work/output.mp4'
             )
         else:
-            # No subtitles, just merge video + audio
+            # No subtitles, just merge video + audio at 1080x1920 / 30fps
+            vf_scale = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30"
             cmd = [
                 'ffmpeg', '-y',
                 '-i', 'work/input_video.mp4',
                 '-i', 'work/input_audio.mp3',
+                '-vf', vf_scale,
                 '-c:v', 'libx264', '-preset', 'fast', '-crf', '23',
                 '-c:a', 'aac', '-b:a', '128k',
                 '-shortest',
