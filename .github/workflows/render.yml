@@ -1,0 +1,74 @@
+name: Render Video
+
+on:
+  repository_dispatch:
+    types: [render-video]
+
+  # Allow manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      video_url:
+        description: 'Direct URL to the background video file'
+        required: true
+        type: string
+      audio_url:
+        description: 'Direct URL to the voiceover audio file'
+        required: true
+        type: string
+      script:
+        description: 'Script text for subtitles (fallback if whisper fails)'
+        required: false
+        type: string
+        default: ''
+      callback_url:
+        description: 'Make.com webhook URL to receive the result'
+        required: false
+        type: string
+        default: ''
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Cache Whisper model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: whisper-tiny-model-v1
+
+      - name: Install FFmpeg (with libass)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg libass-dev fonts-dejavu
+
+      - name: Render video (from repository_dispatch)
+        if: github.event_name == 'repository_dispatch'
+        env:
+          VIDEO_URL: ${{ github.event.client_payload.video_url }}
+          AUDIO_URL: ${{ github.event.client_payload.audio_url }}
+          SCRIPT: ${{ github.event.client_payload.script }}
+          CALLBACK_URL: ${{ github.event.client_payload.callback_url }}
+        run: python render.py
+
+      - name: Render video (from workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          VIDEO_URL: ${{ inputs.video_url }}
+          AUDIO_URL: ${{ inputs.audio_url }}
+          SCRIPT: ${{ inputs.script }}
+          CALLBACK_URL: ${{ inputs.callback_url }}
+        run: python render.py
