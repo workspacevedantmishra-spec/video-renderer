@@ -138,24 +138,25 @@ def format_timestamp(seconds):
 
 def render_video(video_path, audio_path, srt_path, output_path):
     """Merge video + audio and burn subtitles with FFmpeg."""
-    # Subtitle style: TikTok/Shorts style - large white text, thick black outline, middle center
+    # Subtitle style: Custom Montserrat style matching Shotstack offset
     style = (
-        "FontName=Arial,FontSize=60,PrimaryColour=&H00FFFFFF,"
+        "FontName=Montserrat,FontSize=74,PrimaryColour=&H00FFFFFF,"
         "OutlineColour=&H00000000,BackColour=&H00000000,"
-        "Outline=4,Shadow=0,Alignment=5,Bold=1"
+        "Outline=5,Shadow=0,Alignment=2,MarginV=150,Bold=1"
     )
 
-    # Scale to 1080x1920 (Vertical 1080p), 30 fps, crop excess edges
-    vf_scale = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30"
+    # Scale to fit within 1080x1920 with white padded background
+    vf_scale = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:white,fps=30"
 
-    # Escape the subtitle path for FFmpeg filter (replace \ and : )
+    # Escape paths for FFmpeg filter
     srt_escaped = srt_path.replace('\\', '/').replace(':', r'\:')
+    fonts_dir = os.path.abspath('work').replace('\\', '/').replace(':', r'\:')
 
     cmd = [
         'ffmpeg', '-y',
         '-i', video_path,
         '-i', audio_path,
-        '-vf', f"{vf_scale},subtitles={srt_escaped}:force_style='{style}'",
+        '-vf', f"{vf_scale},subtitles={srt_escaped}:fontsdir='{fonts_dir}':force_style='{style}'",
         '-c:v', 'libx264',
         '-preset', 'fast',
         '-crf', '23',
@@ -284,6 +285,7 @@ def main():
         print("\n[1/4] DOWNLOADING FILES")
         download_file(video_url, 'work/input_video.mp4')
         download_file(audio_url, 'work/input_audio.mp3')
+        download_file('https://github.com/google/fonts/raw/main/ofl/montserrat/static/Montserrat-ExtraBold.ttf', 'work/Montserrat-ExtraBold.ttf')
 
         # Step 2: Generate subtitles
         print("\n[2/4] GENERATING SUBTITLES")
@@ -314,7 +316,7 @@ def main():
             )
         else:
             # No subtitles, just merge video + audio at 1080x1920 / 30fps
-            vf_scale = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,fps=30"
+            vf_scale = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:white,fps=30"
             cmd = [
                 'ffmpeg', '-y',
                 '-i', 'work/input_video.mp4',
