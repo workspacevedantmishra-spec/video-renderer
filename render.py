@@ -235,6 +235,11 @@ def send_callback(callback_url, status, video_url=None, error=None):
     if error:
         payload['error'] = str(error)[:500]
 
+    # Pass the ChatGPT script back to the webhook so Scenario 2 can use it!
+    script = os.environ.get('SCRIPT', '')
+    if script:
+        payload['script'] = script
+
     print(f"  → Sending callback to Make.com...")
     try:
         response = requests.post(callback_url, json=payload, timeout=30)
