@@ -140,9 +140,9 @@ def render_video(video_path, audio_path, srt_path, output_path):
     """Merge video + audio and burn subtitles with FFmpeg."""
     # Subtitle style: TikTok/Shorts style - large white text, thick black outline, middle center
     style = (
-        "FontName=Arial,FontSize=100,PrimaryColour=&H00FFFFFF,"
+        "FontName=Arial,FontSize=60,PrimaryColour=&H00FFFFFF,"
         "OutlineColour=&H00000000,BackColour=&H00000000,"
-        "Outline=5,Shadow=0,Alignment=5,Bold=1"
+        "Outline=4,Shadow=0,Alignment=5,Bold=1"
     )
 
     # Scale to 1080x1920 (Vertical 1080p), 30 fps, crop excess edges
