@@ -60,7 +60,7 @@ Use an **HTTP → Make a request** module:
 | **Method** | `POST` |
 | **Headers** | `Authorization: Bearer YOUR_GITHUB_PAT` |
 | | `Accept: application/vnd.github+json` |
-| | `X-GitHub-Api-Version: 2022-11-28` |
+| | `X-GitHub-Api-Version: Authorizatio2022-11-28` |
 | **Body type** | `Raw` → `JSON (application/json)` |
 
 **Body:**

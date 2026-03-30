@@ -258,6 +258,16 @@ def main():
     video_url = os.environ.get('VIDEO_URL', '')
     audio_url = os.environ.get('AUDIO_URL', '')
     script = os.environ.get('SCRIPT', '')
+    
+    script_b64 = os.environ.get('SCRIPT_B64', '')
+    if script_b64:
+        import base64
+        try:
+            script = base64.b64decode(script_b64).decode('utf-8')
+            os.environ['SCRIPT'] = script
+        except Exception as e:
+            print(f"Warning: Failed to decode base64 script: {e}")
+            
     callback_url = os.environ.get('CALLBACK_URL', '')
 
     if not video_url or not audio_url:

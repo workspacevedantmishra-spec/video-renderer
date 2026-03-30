@@ -61,6 +61,7 @@ jobs:
           VIDEO_URL: ${{ github.event.client_payload.video_url }}
           AUDIO_URL: ${{ github.event.client_payload.audio_url }}
           SCRIPT: ${{ github.event.client_payload.script }}
+          SCRIPT_B64: ${{ github.event.client_payload.script_b64 }}
           CALLBACK_URL: ${{ github.event.client_payload.callback_url }}
         run: python render.py
 
