@@ -54,6 +54,8 @@ jobs:
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg libass-dev fonts-dejavu
+          ffmpeg -version
+          ffprobe -version
 
       - name: Render video (from repository_dispatch)
         if: github.event_name == 'repository_dispatch'
@@ -73,3 +75,11 @@ jobs:
           SCRIPT: ${{ inputs.script }}
           CALLBACK_URL: ${{ inputs.callback_url }}
         run: python render.py
+
+      - name: Debug Output (on failure)
+        if: failure()
+        run: |
+          echo "Listing work directory content:"
+          ls -R work/ || echo "work/ directory not found"
+          echo "Environment variables (redacted):"
+          env | grep -E "VIDEO_URL|AUDIO_URL|CALLBACK_URL" | sed 's/=.*/=********/'

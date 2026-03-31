@@ -30,13 +30,17 @@ def download_file(url, output_path):
 
 def get_audio_duration(audio_path):
     """Get audio duration in seconds using ffprobe."""
-    result = subprocess.run(
-        ['ffprobe', '-v', 'quiet', '-show_entries', 'format=duration',
-         '-of', 'json', audio_path],
-        capture_output=True, text=True
-    )
-    data = json.loads(result.stdout)
-    return float(data['format']['duration'])
+    try:
+        result = subprocess.run(
+            ['ffprobe', '-v', 'quiet', '-show_entries', 'format=duration',
+             '-of', 'json', audio_path],
+            capture_output=True, text=True, check=True
+        )
+        data = json.loads(result.stdout)
+        return float(data['format']['duration'])
+    except Exception as e:
+        print(f"  ⚠ Failed to get audio duration via ffprobe: {e}")
+        return 0
 
 
 def generate_srt_whisper(audio_path):
@@ -134,11 +138,15 @@ def format_timestamp(seconds):
     secs = int(seconds % 60)
     millis = int((seconds % 1) * 1000)
     return f"{hours:02d}:{minutes:02d}:{secs:02d},{millis:03d}"
-
-
 def render_video(video_path, audio_path, srt_path, output_path):
     """Merge video + audio and burn subtitles with FFmpeg."""
-    # Subtitle style: Custom Montserrat style matching Shotstack offset
+    # Ensure assets exist
+    if not os.path.exists(video_path): raise FileNotFoundError(f"Video input not found: {video_path}")
+    if not os.path.exists(audio_path): raise FileNotFoundError(f"Audio input not found: {audio_path}")
+    if not os.path.exists(srt_path): raise FileNotFoundError(f"SRT file not found: {srt_path}")
+
+    # Subtitle style: Montserrat ExtraBold (matching Shotstack style)
+    # The internal font family name is just Montserrat. Using Bold=1 ensures it properly matches the bold variant.
     style = (
         "FontName=Montserrat,FontSize=74,PrimaryColour=&H00FFFFFF,"
         "OutlineColour=&H00000000,BackColour=&H00000000,"
@@ -148,15 +156,24 @@ def render_video(video_path, audio_path, srt_path, output_path):
     # Scale to fit within 1080x1920 with white padded background
     vf_scale = "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:white,fps=30"
 
-    # Escape paths for FFmpeg filter
-    srt_escaped = srt_path.replace('\\', '/').replace(':', r'\:')
-    fonts_dir = os.path.abspath('work').replace('\\', '/').replace(':', r'\:')
+    # Escape paths for FFmpeg filter.
+    is_windows = sys.platform.startswith('win')
+    srt_escaped = srt_path.replace('\\', '/')
+
+    if is_windows:
+        # On Windows, colons in paths must be escaped like C\:/path.
+        srt_escaped = srt_escaped.replace(':', r'\:')
+
+    # Using single quotes for force_style within the filter string
+    # To handle commas in force_style, we must be very careful with quoting.
+    sub_filter = f"subtitles='{srt_escaped}':force_style='{style}'"
+
 
     cmd = [
         'ffmpeg', '-y',
         '-i', video_path,
         '-i', audio_path,
-        '-vf', f"{vf_scale},subtitles={srt_escaped}:fontsdir='{fonts_dir}':force_style='{style}'",
+        '-vf', f"{vf_scale},{sub_filter}",
         '-c:v', 'libx264',
         '-preset', 'fast',
         '-crf', '23',
@@ -169,11 +186,14 @@ def render_video(video_path, audio_path, srt_path, output_path):
     ]
 
     print(f"  → Running FFmpeg...")
+    # Capture both stdout and stderr for better debugging
     result = subprocess.run(cmd, capture_output=True, text=True)
 
     if result.returncode != 0:
-        print(f"  ✗ FFmpeg stderr:\n{result.stderr[-2000:]}")
-        raise RuntimeError(f"FFmpeg failed with return code {result.returncode}")
+        # Get the last 20 lines of stderr which usually contains the actual error
+        stderr_tail = "\n".join(result.stderr.splitlines()[-20:])
+        print(f"  ✗ FFmpeg Output (stderr):\n{result.stderr[-3000:]}")
+        raise RuntimeError(f"FFmpeg failed (code {result.returncode}). Error details:\n{stderr_tail}")
 
     # Get output file size
     size_mb = os.path.getsize(output_path) / (1024 * 1024)
@@ -285,7 +305,27 @@ def main():
         print("\n[1/4] DOWNLOADING FILES")
         download_file(video_url, 'work/input_video.mp4')
         download_file(audio_url, 'work/input_audio.mp3')
-        download_file('https://github.com/google/fonts/raw/main/ofl/montserrat/static/Montserrat-ExtraBold.ttf', 'work/Montserrat-ExtraBold.ttf')
+        
+        # Download Montserrat-ExtraBold Font
+        print("  → Downloading Montserrat font...")
+        font_url = 'https://github.com/JulietaUla/Montserrat/raw/master/fonts/ttf/Montserrat-ExtraBold.ttf'
+        font_path = 'work/Montserrat-ExtraBold.ttf'
+        try:
+            download_file(font_url, font_path)
+            
+            # Install to system fonts map on Linux for libass/fontconfig
+            if not sys.platform.startswith('win'):
+                import shutil
+                user_fonts_dir = os.path.expanduser('~/.fonts')
+                os.makedirs(user_fonts_dir, exist_ok=True)
+                shutil.copy(font_path, user_fonts_dir)
+                try:
+                    subprocess.run(['fc-cache', '-fv'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    print("  ✓ Font installed to system font cache")
+                except FileNotFoundError:
+                    print("  ⚠ fc-cache not found, fontconfig may not recognize the font")
+        except Exception as e:
+            print(f"  ⚠ Failed to download or install Montserrat font: {e}, falling back to system fonts.")
 
         # Step 2: Generate subtitles
         print("\n[2/4] GENERATING SUBTITLES")
