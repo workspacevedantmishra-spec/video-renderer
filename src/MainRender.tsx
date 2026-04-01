@@ -28,7 +28,7 @@ export const MainRender: React.FC<MainRenderProps> = ({
       fps,
       frame: wordFrame,
       config: { damping: 14, mass: 0.6, stiffness: 120 },
-      durationInFrames: 15,
+      durationInFrames: 8,
     });
     
     // Interpolate the spring bounce to scale the pop from 0.85 -> 1.05 -> 1.0
@@ -58,14 +58,14 @@ export const MainRender: React.FC<MainRenderProps> = ({
           zIndex: 10
         }}>
           <div style={{
-            fontSize: '75px',
+            fontSize: '55px',
             fontWeight: '900',
             color: '#FFD700', // High-contrast yellow
-            WebkitTextStroke: '3px black', // Intense contrast bordering
-            textShadow: '0 8px 16px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.8)',
+            WebkitTextStroke: '2px black', // Intense contrast bordering
+            textShadow: '0 5px 10px rgba(0,0,0,0.9), 0 0 5px rgba(0,0,0,0.8)',
             backgroundColor: 'rgba(0, 0, 0, 0.4)',
-            padding: '20px 45px',
-            borderRadius: '20px',
+            padding: '12px 30px',
+            borderRadius: '16px',
             textAlign: 'center',
             fontFamily: '"Arial Black", Arial, sans-serif',
             maxWidth: '90%',
