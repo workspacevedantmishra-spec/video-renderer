@@ -2,7 +2,11 @@ import React from 'react';
 import { AbsoluteFill, Audio, Video, useCurrentFrame, useVideoConfig, spring, interpolate } from 'remotion';
 import { MainRenderProps } from './Root';
 
-export const MainRender: React.FC<MainRenderProps> = ({ videoUrl, audioUrl, subtitleScript }) => {
+export const MainRender: React.FC<MainRenderProps> = ({ 
+  videoUrl, 
+  audioUrl, 
+  subtitleScript = "" 
+}) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
   const timeInSeconds = frame / fps;

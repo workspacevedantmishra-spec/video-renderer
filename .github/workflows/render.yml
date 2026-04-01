@@ -50,7 +50,7 @@ jobs:
       - name: Render Video
         run: |
           mkdir -p out
-          npx remotion render src/index.ts MainRender out/video.mp4 --props=props.json --force
+          npx remotion render src/index.ts MainRender out/video.mp4 --props=props.json --force --concurrency=1 --gl=angle
 
       - name: Post callback on success
         if: success()

@@ -17,16 +17,16 @@ export const defaultProps: MainRenderProps = {
   durationInFrames: 10800 // Safe default fallback
 };
 
-export const calculateMetadata: CalculateMetadataFunction<MainRenderProps> = async ({ props, defaultProps }) => {
+export const calculateMetadata: CalculateMetadataFunction<MainRenderProps> = async ({ props }) => {
   try {
-    const duration = await getAudioDurationInSeconds(props.audioUrl || defaultProps.audioUrl);
+    const duration = await getAudioDurationInSeconds(props.audioUrl);
     return {
       durationInFrames: Math.max(60, Math.ceil(duration * 60))
     };
   } catch (e) {
     console.error("Could not fetch audio metadata:", e);
     return {
-      durationInFrames: props.durationInFrames || defaultProps.durationInFrames || 10800
+      durationInFrames: props.durationInFrames || 10800
     };
   }
 };
