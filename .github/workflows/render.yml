@@ -35,15 +35,18 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
+      - name: Download Assets
+        run: |
+          curl -L "${{ github.event.inputs.videoUrl }}" -o input_video.mp4 || exit 1
+          curl -L "${{ github.event.inputs.audioUrl }}" -o input_audio.mp3 || exit 1
+
       - name: Prepare Props
         env:
-          VIDEO_URL: ${{ github.event.inputs.videoUrl }}
-          AUDIO_URL: ${{ github.event.inputs.audioUrl }}
           SUBTITLE_SCRIPT: ${{ github.event.inputs.subtitleScript }}
         run: |
           jq -n \
-            --arg videoUrl "$VIDEO_URL" \
-            --arg audioUrl "$AUDIO_URL" \
+            --arg videoUrl "$PWD/input_video.mp4" \
+            --arg audioUrl "$PWD/input_audio.mp3" \
             --arg subtitleScript "$SUBTITLE_SCRIPT" \
             '{videoUrl: $videoUrl, audioUrl: $audioUrl, subtitleScript: $subtitleScript}' > props.json
 

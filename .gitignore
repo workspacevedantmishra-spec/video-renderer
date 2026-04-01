@@ -13,3 +13,12 @@ work/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Remotion & Build
+node_modules/
+out/
+props.json
+input_video.mp4
+input_audio.mp3
+*.mp4
+*.mp3
