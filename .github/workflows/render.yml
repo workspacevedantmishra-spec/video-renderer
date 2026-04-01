@@ -48,7 +48,9 @@ jobs:
             '{videoUrl: $videoUrl, audioUrl: $audioUrl, subtitleScript: $subtitleScript}' > props.json
 
       - name: Render Video
-        run: npx remotion render src/index.ts MainRender out/video.mp4 --props=props.json
+        run: |
+          mkdir -p out
+          npx remotion render src/index.ts MainRender out/video.mp4 --props=props.json --force
 
       - name: Post callback on success
         if: success()
