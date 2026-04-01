@@ -1,85 +1,65 @@
 name: Render Video
 
 on:
-  repository_dispatch:
-    types: [render-video]
-
-  # Allow manual trigger for testing
   workflow_dispatch:
     inputs:
-      video_url:
-        description: 'Direct URL to the background video file'
+      videoUrl:
+        description: 'URL of the background video'
         required: true
         type: string
-      audio_url:
-        description: 'Direct URL to the voiceover audio file'
+      audioUrl:
+        description: 'URL of the audio'
         required: true
         type: string
-      script:
-        description: 'Script text for subtitles (fallback if whisper fails)'
-        required: false
+      subtitleScript:
+        description: 'JSON array for subtitles'
+        required: true
         type: string
-        default: ''
-      callback_url:
-        description: 'Make.com webhook URL to receive the result'
-        required: false
+      callbackUrl:
+        description: 'Webhook to POST result'
+        required: true
         type: string
-        default: ''
 
 jobs:
   render:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install Node.js
+        uses: actions/setup-node@v4
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          node-version: 20
 
-      - name: Install Python dependencies
-        run: pip install -r requirements.txt
+      - name: Install Dependencies
+        run: npm install
 
-      - name: Cache Whisper model
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/huggingface
-          key: whisper-tiny-model-v1
-
-      - name: Install FFmpeg (with libass)
+      - name: Prepare Props
+        env:
+          VIDEO_URL: ${{ github.event.inputs.videoUrl }}
+          AUDIO_URL: ${{ github.event.inputs.audioUrl }}
+          SUBTITLE_SCRIPT: ${{ github.event.inputs.subtitleScript }}
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg libass-dev fonts-dejavu
-          ffmpeg -version
-          ffprobe -version
+          jq -n \
+            --arg videoUrl "$VIDEO_URL" \
+            --arg audioUrl "$AUDIO_URL" \
+            --argjson subtitleScript "$SUBTITLE_SCRIPT" \
+            '{videoUrl: $videoUrl, audioUrl: $audioUrl, subtitleScript: $subtitleScript}' > props.json
 
-      - name: Render video (from repository_dispatch)
-        if: github.event_name == 'repository_dispatch'
-        env:
-          VIDEO_URL: ${{ github.event.client_payload.video_url }}
-          AUDIO_URL: ${{ github.event.client_payload.audio_url }}
-          SCRIPT: ${{ github.event.client_payload.script }}
-          SCRIPT_B64: ${{ github.event.client_payload.script_b64 }}
-          CALLBACK_URL: ${{ github.event.client_payload.callback_url }}
-        run: python render.py
+      - name: Render Video
+        run: npx remotion render src/index.ts MainRender out/video.mp4 --props=props.json
 
-      - name: Render video (from workflow_dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        env:
-          VIDEO_URL: ${{ inputs.video_url }}
-          AUDIO_URL: ${{ inputs.audio_url }}
-          SCRIPT: ${{ inputs.script }}
-          CALLBACK_URL: ${{ inputs.callback_url }}
-        run: python render.py
-
-      - name: Debug Output (on failure)
+      - name: Post callback on success
+        if: success()
+        run: |
+          curl -X POST -H "Content-Type: application/json" \
+            -d '{"status":"success","message":"Render completed successfully"}' \
+            ${{ github.event.inputs.callbackUrl }}
+          
+      - name: Post callback on failure
         if: failure()
         run: |
-          echo "Listing work directory content:"
-          ls -R work/ || echo "work/ directory not found"
-          echo "Environment variables (redacted):"
-          env | grep -E "VIDEO_URL|AUDIO_URL|CALLBACK_URL" | sed 's/=.*/=********/'
+          curl -X POST -H "Content-Type: application/json" \
+            -d '{"status":"error","message":"Render failed"}' \
+            ${{ github.event.inputs.callbackUrl }}
