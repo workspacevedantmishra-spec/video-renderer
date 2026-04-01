@@ -4,17 +4,19 @@ import { MainRenderProps } from './Root';
 
 export const MainRender: React.FC<MainRenderProps> = ({ videoUrl, audioUrl, subtitleScript }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, durationInFrames } = useVideoConfig();
   const timeInSeconds = frame / fps;
+  const totalDurationInSeconds = durationInFrames / fps;
 
-  // Find the currently spoken word (use < sub.end to avoid overlap)
-  const currentWord = subtitleScript.find(
-    (sub) => timeInSeconds >= sub.start && timeInSeconds < sub.end
-  );
+  const words = subtitleScript.split(/\s+/).filter(Boolean);
+  const timePerWord = totalDurationInSeconds / Math.max(1, words.length);
+
+  const currentWordIndex = Math.floor(timeInSeconds / timePerWord);
+  const currentWordText = currentWordIndex >= 0 && currentWordIndex < words.length ? words[currentWordIndex] : null;
 
   let scale = 1;
-  if (currentWord) {
-    const wordStartFrame = Math.round(currentWord.start * fps);
+  if (currentWordText) {
+    const wordStartFrame = Math.round(currentWordIndex * timePerWord * fps);
     const wordFrame = frame - wordStartFrame;
 
     // Apply a subtle scale-up animation on word-switches using Remotion's spring physics
@@ -40,16 +42,25 @@ export const MainRender: React.FC<MainRenderProps> = ({ videoUrl, audioUrl, subt
       )}
       {audioUrl && <Audio src={audioUrl} />}
       
-      {currentWord && (
-        <AbsoluteFill style={{ justifyContent: 'flex-end', alignItems: 'center', paddingBottom: '25%' }}>
+      {currentWordText && (
+        <div style={{
+          position: 'absolute',
+          top: '70%',
+          left: 0,
+          right: 0,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 10
+        }}>
           <div style={{
-            fontSize: '95px',
+            fontSize: '75px',
             fontWeight: '900',
             color: '#FFD700', // High-contrast yellow
             WebkitTextStroke: '3px black', // Intense contrast bordering
             textShadow: '0 8px 16px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.8)',
-            backgroundColor: 'rgba(0, 0, 0, 0.3)',
-            padding: '20px 40px',
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            padding: '20px 45px',
             borderRadius: '20px',
             textAlign: 'center',
             fontFamily: '"Arial Black", Arial, sans-serif',
@@ -57,9 +68,9 @@ export const MainRender: React.FC<MainRenderProps> = ({ videoUrl, audioUrl, subt
             lineHeight: '1.2',
             transform: `scale(${scale})`
           }}>
-            {currentWord.text}
+            {currentWordText}
           </div>
-        </AbsoluteFill>
+        </div>
       )}
     </AbsoluteFill>
   );

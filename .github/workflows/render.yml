@@ -44,7 +44,7 @@ jobs:
           jq -n \
             --arg videoUrl "$VIDEO_URL" \
             --arg audioUrl "$AUDIO_URL" \
-            --argjson subtitleScript "$SUBTITLE_SCRIPT" \
+            --arg subtitleScript "$SUBTITLE_SCRIPT" \
             '{videoUrl: $videoUrl, audioUrl: $audioUrl, subtitleScript: $subtitleScript}' > props.json
 
       - name: Render Video

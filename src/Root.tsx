@@ -1,27 +1,34 @@
-import { Composition } from 'remotion';
+import { Composition, CalculateMetadataFunction } from 'remotion';
+import { getAudioDurationInSeconds } from '@remotion/media-utils';
 import { MainRender } from './MainRender';
 import React from 'react';
-
-export type SubtitleItem = {
-  start: number;
-  end: number;
-  text: string;
-};
 
 export type MainRenderProps = {
   videoUrl: string;
   audioUrl: string;
-  subtitleScript: SubtitleItem[];
+  subtitleScript: string;
   durationInFrames?: number;
 };
 
 export const defaultProps: MainRenderProps = {
   videoUrl: 'https://cdn.pixabay.com/video/2021/08/04/83893-585806655_large.mp4',
   audioUrl: 'https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg',
-  subtitleScript: [
-    { start: 0, end: 1, text: 'Hello World!' }
-  ],
-  durationInFrames: 10800 // 3 minutes at 60fps
+  subtitleScript: "This is a normal text script that will be automatically synced over the full audio track length.",
+  durationInFrames: 10800 // Safe default fallback
+};
+
+export const calculateMetadata: CalculateMetadataFunction<MainRenderProps> = async ({ props, defaultProps }) => {
+  try {
+    const duration = await getAudioDurationInSeconds(props.audioUrl || defaultProps.audioUrl);
+    return {
+      durationInFrames: Math.max(60, Math.ceil(duration * 60))
+    };
+  } catch (e) {
+    console.error("Could not fetch audio metadata:", e);
+    return {
+      durationInFrames: props.durationInFrames || defaultProps.durationInFrames || 10800
+    };
+  }
 };
 
 export const RemotionRoot: React.FC = () => {
@@ -30,11 +37,11 @@ export const RemotionRoot: React.FC = () => {
       <Composition
         id="MainRender"
         component={MainRender}
-        durationInFrames={defaultProps.durationInFrames || 10800}
-        fps={60}
-        width={1920}
-        height={1080}
+        calculateMetadata={calculateMetadata}
         defaultProps={defaultProps}
+        fps={60}
+        width={1080}
+        height={1920}
       />
     </>
   );
